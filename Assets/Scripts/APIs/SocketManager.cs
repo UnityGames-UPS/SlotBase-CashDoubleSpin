@@ -13,24 +13,24 @@ public class SocketIOManager : MonoBehaviour
   [SerializeField] private string TestToken;
 
   [Header("Managers")]
-  // [SerializeField] private SlotManager _slotManager;
+  [SerializeField] private SlotManager slotManager;
   [SerializeField] private UIManager _uiManager;
   [SerializeField] internal JSFunctCalls JSManager;
   private Socket gameSocket;
   protected string NameSpace = "playground";
   protected string SocketURI = null;
   protected string TestSocketURI = "https://devrealtime.dingdinghouse.com/";
-  protected string gameID = "SL-BW";
+  protected string gameID = "SL-DCS";
   // protected string gameID = "";
   private SocketManager manager;
   private const int maxReconnectionAttempts = 6;
   private readonly TimeSpan reconnectionDelay = TimeSpan.FromSeconds(10);
   private string myAuth = null;
-  internal GameData initialData = null;
-  internal UiData initUIData = null;
-  internal Features features = null;
   internal Root resultData = null;
   internal Player playerdata = null;
+  internal UiData initUIData = null;
+  internal GameData initialData = null;
+  internal Features features = null;
   internal bool isResultdone = false;
   internal bool SetInit = false;
 
@@ -304,7 +304,7 @@ public class SocketIOManager : MonoBehaviour
     }
   }
 
-  void CloseGame()
+  internal void CloseGame()
   {
     Debug.Log("Unity: Closing Game");
     StartCoroutine(CloseSocket());
@@ -344,7 +344,6 @@ public class SocketIOManager : MonoBehaviour
     {
       case "initData":
         {
-          Debug.Log("BG Build");
           initialData = myData.gameData;
           initUIData = myData.uiData;
           features = myData.features;
@@ -353,7 +352,7 @@ public class SocketIOManager : MonoBehaviour
           {
             SetInit = true;
             PopulateSlotGame(myData);
-            // _slotManager.SocketConnected = true;
+            slotManager.SocketConnected = true;
           }
           else
           {

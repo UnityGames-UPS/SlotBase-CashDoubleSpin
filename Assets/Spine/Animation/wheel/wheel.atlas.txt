@@ -1,0 +1,10 @@
+wheel.png
+size:1298,1180
+filter:Linear,Linear
+pma:true
+dots
+bounds:1084,2,1176,212
+rotate:90
+wheel_blurred
+bounds:2,59,1119,1080
+rotate:90
