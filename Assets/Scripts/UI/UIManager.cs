@@ -9,8 +9,8 @@ using System.Text;
 public class UIManager : MonoBehaviour
 {
     [Header("Slot UI")]
-    [SerializeField] private Button SpinButton;
-    [SerializeField] private Button StopSpinButton;
+    [SerializeField] internal Button SpinButton;
+    [SerializeField] internal Button StopSpinButton;
     [SerializeField] internal Button AutoSpinButton;
 
     [Header("Main UI Text")]
@@ -24,17 +24,20 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject FreeSpinCountPanel;
     [SerializeField] private TMP_Text FreeSpinText;
 
-
     [Header("Bg UI Reference")]
     [SerializeField] private Image Bg_Image;
     [SerializeField] private Sprite Blue_Sprite;
     [SerializeField] private Sprite Red_Sprite;
+
+    [SerializeField] private GameObject shinePrefab;
+    [SerializeField] private RectTransform parentRect;
 
     [Header("Main Popus UI Object")]
     [SerializeField] private GameObject MainPopup_Object;
 
     [Header("Paytable Popup UI References")]
     [SerializeField] private GameObject[] Pages;
+    [SerializeField] private GameObject[] PageIndicator;
     [SerializeField] private Button Paytable_Button;
     [SerializeField] private GameObject PaytablePopup_Object;
     [SerializeField] private Button PaytableExit_Button;
@@ -84,6 +87,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private AudioController audioController;
     [SerializeField] private SocketIOManager socketManager;
     [SerializeField] private SlotManager slotManager;
+    [SerializeField] private BonusManager bonusManager;
 
     internal double currentBalance = 0;
     internal double currentTotalBet = 0;
@@ -93,6 +97,7 @@ public class UIManager : MonoBehaviour
     private bool isExit = false;
 
     private int paytablePageCounter;
+    private Coroutine bgAnimationRoutine;
 
     private void Start()
     {
@@ -105,10 +110,6 @@ public class UIManager : MonoBehaviour
 
         isMusic = true;
         isSound = true;
-
-        //if (
-        // audioController) 
-        // audioController.ToggleMute(false);
 
         if (Paytable_Button) Paytable_Button.onClick.RemoveAllListeners();
         if (Paytable_Button) Paytable_Button.onClick.AddListener(delegate { OpenPaytable(); });
@@ -149,26 +150,25 @@ public class UIManager : MonoBehaviour
         if (Music_Button) Music_Button.onClick.RemoveAllListeners();
         if (Music_Button) Music_Button.onClick.AddListener(ToggleMusic);
 
-        // if (SkipWinAnimation) SkipWinAnimation.onClick.RemoveAllListeners();
-        // if (SkipWinAnimation) SkipWinAnimation.onClick.AddListener(SkipWin);
+        //StartBGAnimation();
     }
 
     #region Audio Buttons
 
     private void ToggleMusic()
     {
-        audioController.PlayBetButton();
+        audioController.PlayUIButton(false);
         if (isMusic)
         {
             Music_Button.image.sprite = MusicOff_Sprite;
-            if (audioController) audioController.PlayBetButton();
+            if (audioController) audioController.PlayUIButton(false);
             if (audioController) audioController.MuteBackground(true);
             isMusic = false;
         }
         else
         {
             Music_Button.image.sprite = MusicOn_Sprite;
-            if (audioController) audioController.PlayBetButton();
+            if (audioController) audioController.PlayUIButton(false);
             if (audioController) audioController.MuteBackground(false);
             isMusic = true;
         }
@@ -176,18 +176,18 @@ public class UIManager : MonoBehaviour
 
     private void ToggleSound()
     {
-        audioController.PlayBetButton();
+        audioController.PlayUIButton(false);
         if (isSound)
         {
             Sound_Button.image.sprite = SoundOff_Sprite;
-            if (audioController) audioController.PlayBetButton();
+            if (audioController) audioController.PlayUIButton(false);
             if (audioController) audioController.MuteGame(true);
             isSound = false;
         }
         else
         {
             Sound_Button.image.sprite = SoundOn_Sprite;
-            if (audioController) audioController.PlayBetButton();
+            if (audioController) audioController.PlayUIButton(false);
             if (audioController) audioController.MuteGame(false);
             isSound = true;
         }
@@ -199,22 +199,26 @@ public class UIManager : MonoBehaviour
 
     private void OnSpinButtonPressed()
     {
-        // Lock the spin button immediately — OnStopSpinButtonPressed re-enables it
-        // only after the slots have fully settled.
-        
-        audioController.PlaySpinStarts();
-        SpinButton.interactable = false;
-        SetBetButtonsInteractable(false);
+        if (!bonusManager.isBonusFinished)
+        {
+            bonusManager.wheelButtonPressed = true;
+            SpinButton.interactable = false;
+        }
+        else
+        {
+            audioController.PlayUIButton(false);
+            SpinButton.interactable = false;
+            SetBetButtonsInteractable(false);
 
-        slotManager.StartSlots();
-        StopSpinButton.gameObject.SetActive(true);
-        SpinButton.gameObject.SetActive(false);
+            slotManager.StartSlots();
+            StopSpinButton.gameObject.SetActive(true);
+            SpinButton.gameObject.SetActive(false);
+        }
     }
 
     internal void OnStopSpinButtonPressed()
     {
-        
-        audioController.PlayBetButton();
+        audioController.PlayUIButton(false);
         slotManager.RequestInstantStop();
 
         if (slotManager._isAutoSpin)
@@ -224,9 +228,6 @@ public class UIManager : MonoBehaviour
             AutoSpinButton.interactable = false;
         }
 
-        // Keep the stop button visible but non-interactable while reels and post-spin
-        // logic finish. SetSpinButtonReady() is the only place that switches back to
-        // the spin button, and only once everything is truly done.
         StopSpinButton.interactable = false;
         StopSpinButton.gameObject.SetActive(true);
         SpinButton.gameObject.SetActive(false);
@@ -239,19 +240,15 @@ public class UIManager : MonoBehaviour
 
     internal void SetSpinButtonReady()
     {
-        // Always reset stop button interactability so it works next spin.
         StopSpinButton.interactable = true;
 
-        //if (slotManager._isAutoSpin)
+        if (slotManager._isAutoSpin)
         {
-            // Autospin is still active — next spin is about to start.
-            // Keep showing the interactable stop button; spin button stays hidden.
             StopSpinButton.gameObject.SetActive(true);
             SpinButton.gameObject.SetActive(false);
         }
-        //else
+        else
         {
-            // Truly idle — show the spin button and hide stop.
             SpinButton.interactable = true;
             SpinButton.gameObject.SetActive(true);
             StopSpinButton.gameObject.SetActive(false);
@@ -262,36 +259,48 @@ public class UIManager : MonoBehaviour
 
     private void OnAutoSpinButtonPressed()
     {
-        
-        audioController.PlayBetButton();
-        if (!slotManager._isAutoSpin)
+        audioController.PlayUIButton(false);
+        if (!bonusManager.isBonusFinished)
         {
-            slotManager.AutoSpin();
-            SetBetButtonsInteractable(false);
-            StopSpinButton.gameObject.SetActive(true);
-            SpinButton.gameObject.SetActive(false);
-            //AutoSpinButton.gameObject.GetComponent<ImageAnimation>().StartAnimation();
-            AutoSpinButtonAnimation(true);
+            if (!slotManager._isAutoSpin)
+            {
+                slotManager.AutoSpin();
+                SetBetButtonsInteractable(false);
+                AutoSpinButtonAnimation(true);
+            }
+            else
+            {
+                AutoSpinButton.interactable = false;
+                slotManager.StopAutoSpin();
+                AutoSpinButtonAnimation(false);
+            }
         }
         else
         {
-            AutoSpinButton.interactable = false;
-            slotManager.StopAutoSpin();
-            // Keep stop button visible but non-interactable while the current
-            // spin finishes. SetSpinButtonReady() restores the spin button once done.
-            StopSpinButton.interactable = false;
-            StopSpinButton.gameObject.SetActive(true);
-            SpinButton.gameObject.SetActive(false);
-            //AutoSpinButton.gameObject.GetComponent<ImageAnimation>().StopAnimation();
-            AutoSpinButtonAnimation(false);
+            if (!slotManager._isAutoSpin)
+            {
+                slotManager.AutoSpin();
+                SetBetButtonsInteractable(false);
+                StopSpinButton.gameObject.SetActive(true);
+                SpinButton.gameObject.SetActive(false);
+                AutoSpinButtonAnimation(true);
+            }
+            else
+            {
+                AutoSpinButton.interactable = false;
+                slotManager.StopAutoSpin();
+                StopSpinButton.interactable = false;
+                StopSpinButton.gameObject.SetActive(true);
+                SpinButton.gameObject.SetActive(false);
+                AutoSpinButtonAnimation(false);
+            }
         }
     }
 
     private void ChangeBet(bool IncDec)
     {
-        if (
-            audioController) 
-        audioController.PlayBetButton();
+        if (audioController)
+            audioController.PlayUIButton(false);
         if (IncDec)
         {
             betCounter++;
@@ -313,10 +322,9 @@ public class UIManager : MonoBehaviour
 
     internal void ToggleBonusBackground(bool isBonus)
     {
-        //Bg_Image.sprite = Bonus_Sprite;
-        if(isBonus)
+        if (isBonus)
         {
-        Bg_Image.sprite = Red_Sprite;
+            Bg_Image.sprite = Red_Sprite;
         }
         else
         {
@@ -327,9 +335,6 @@ public class UIManager : MonoBehaviour
     #endregion
 
     #region Free Spin
-    // Ticks the displayed free-spin counter down by 1 at the moment the spin
-    // starts. The server-authoritative count is then reconfirmed by
-    // ToggleFreeSpinUI at the end of the spin, so it can never drift.
     internal void DecrementFreeSpinCount()
     {
         if (FreeSpinText != null &&
@@ -344,7 +349,6 @@ public class UIManager : MonoBehaviour
         if (isFreeSpin)
         {
             FreeSpinCountPanel.SetActive(true);
-            //ToggleBackground();
             if (FreeSpinText) FreeSpinText.text = freeSpinLeft.ToString();
 
             SpinButton.interactable = false;
@@ -355,23 +359,46 @@ public class UIManager : MonoBehaviour
         else
         {
             FreeSpinCountPanel.SetActive(false);
-            //ToggleBackground(true);
         }
     }
     #endregion
 
     #region Text Update
 
-    internal void UpdateBalance(double balance)
+    internal void UpdateBalance(double balance, bool doAnimate = false)
     {
-        // if (Balance_Text) Balance_Text.text = ToSpriteString(balance, "F2");
-        if (Balance_Text) Balance_Text.text = balance.ToString("F2");
+        if (doAnimate)
+        {
+            Tween balanceTween;
+            double displayAmount = currentBalance;
+            balanceTween = DOTween.To(() => displayAmount, val =>
+            {
+                displayAmount = val;
+                Balance_Text.text = val.ToString("F2");
+            }, balance, 1.5f);
+        }
+        else
+        {
+            if (Balance_Text) Balance_Text.text = balance.ToString("F2");
+        }
     }
 
-    internal void UpdateWin(double winAmount)
+    internal void UpdateWin(double winAmount, bool doAnimate = false)
     {
-        // if (WinAmount_Text) WinAmount_Text.text = ToSpriteString(winAmount, "F2");
-        if (WinAmount_Text) WinAmount_Text.text = winAmount.ToString("F2");
+        if (doAnimate)
+        {
+            Tween winTween;
+            double displayAmount = 0f;
+            winTween = DOTween.To(() => displayAmount, val =>
+            {
+                displayAmount = val;
+                WinAmount_Text.text = val.ToString("F2");
+            }, winAmount, 1.5f);
+        }
+        else
+        {
+            if (WinAmount_Text) WinAmount_Text.text = winAmount.ToString("F2");
+        }
     }
 
     #endregion
@@ -381,25 +408,20 @@ public class UIManager : MonoBehaviour
     private void CallOnExitFunction()
     {
         isExit = true;
-        //
-        // audioController.PlayButtonAudio();
+        audioController.PlayUIButton(false);
         socketManager.CloseGame();
     }
 
     private void OpenPopup(GameObject Popup)
     {
-        //if (
-        // audioController) 
-        // audioController.PlayButtonAudio();
+        audioController.PlayUIButton(false);
         if (Popup) Popup.SetActive(true);
         if (MainPopup_Object) MainPopup_Object.SetActive(true);
     }
 
     private void ClosePopup(GameObject Popup)
     {
-        //if (
-        // audioController) 
-        // audioController.PlayButtonAudio();
+        audioController.PlayUIButton(false);
         if (Popup) Popup.SetActive(false);
         if (!DisconnectPopup_Object.activeSelf)
             if (MainPopup_Object) MainPopup_Object.SetActive(false);
@@ -441,8 +463,7 @@ public class UIManager : MonoBehaviour
 
     private void OpenPaytable()
     {
-        //
-        // audioController.PlayButtonAudio();
+        audioController.PlayUIButton(false);
         foreach (GameObject gameObject in Pages)
             gameObject.SetActive(false);
         paytablePageCounter = 0;
@@ -453,8 +474,7 @@ public class UIManager : MonoBehaviour
 
     private void SwitchPages(bool IncDec)
     {
-        //
-        // audioController.PlayButtonAudio();
+        audioController.PlayUIButton(false);
         if (IncDec)
         {
             paytablePageCounter++;
@@ -467,11 +487,25 @@ public class UIManager : MonoBehaviour
         }
         foreach (GameObject gameObject in Pages)
             gameObject.SetActive(false);
+
         Pages[paytablePageCounter].SetActive(true);
+
+        foreach (GameObject gameObject in PageIndicator)
+            gameObject.SetActive(false);
+
+        PageIndicator[paytablePageCounter].SetActive(true);
     }
 
     private void InitialisePayTable()
     {
+        WildText.text = (socketManager.initUIData.paylines.symbols[1].payout * socketManager.initialData.bets[betCounter]).ToString();
+        TripleSevenText.text = (socketManager.initUIData.paylines.symbols[2].payout * socketManager.initialData.bets[betCounter]).ToString();
+        DoubleSevenText.text = (socketManager.initUIData.paylines.symbols[3].payout * socketManager.initialData.bets[betCounter]).ToString();
+        SevenText.text = (socketManager.initUIData.paylines.symbols[4].payout * socketManager.initialData.bets[betCounter]).ToString();
+        TwoBarText.text = (socketManager.initUIData.paylines.symbols[5].payout * socketManager.initialData.bets[betCounter]).ToString();
+        SevenMixedText.text = (socketManager.features.anyPayouts.sevens * socketManager.initialData.bets[betCounter]).ToString();
+        BarText.text = (socketManager.initUIData.paylines.symbols[6].payout * socketManager.initialData.bets[betCounter]).ToString();
+        BarMixedText.text = (socketManager.features.anyPayouts.bars * socketManager.initialData.bets[betCounter]).ToString();
     }
 
     #endregion
@@ -481,11 +515,13 @@ public class UIManager : MonoBehaviour
     internal void InitialiseUIData(Root root)
     {
         InitialisePayTable();
+        bonusManager.IntializeBonusWheelValue();
         UpdateBalance(root.player.balance);
         currentBalance = root.player.balance;
         UpdateWin(0.00);
         if (Bet_Text) Bet_Text.text = (root.gameData.bets[betCounter] * socketManager.initialData.lines.Count).ToString();
         currentTotalBet = root.gameData.bets[betCounter] * root.gameData.lines.Count;
+        StartBGAnimation();
     }
 
     internal void SetBetButtonsInteractable(bool interactable)
@@ -497,10 +533,8 @@ public class UIManager : MonoBehaviour
     private void AutoSpinButtonAnimation(bool animate)
     {
         var arrowObject = AutoSpinButton.transform.GetChild(0).gameObject;
-        //while (isAutoSpinAnimating)
         if (animate)
         {
-            //arrowObject.SetActive(true);
             arrowObject.transform.DORotate(new Vector3(0, 0, -360), 3f, RotateMode.LocalAxisAdd)
                        .SetEase(Ease.Linear)
                        .SetLoops(-1);
@@ -508,7 +542,71 @@ public class UIManager : MonoBehaviour
         else
         {
             arrowObject.transform.DOKill();
-            //arrowObject.transform.rotation = new Quaternion(0, 0, 0, 0);
+        }
+    }
+
+    internal void StartBGAnimation()
+    {
+        if (bgAnimationRoutine != null)
+            StopCoroutine(bgAnimationRoutine);
+
+        bgAnimationRoutine = StartCoroutine(BGAnimationRoutine());
+    }
+
+    internal void StopBGAnimation()
+    {
+        if (bgAnimationRoutine != null)
+        {
+            StopCoroutine(bgAnimationRoutine);
+            bgAnimationRoutine = null;
+        }
+    }
+
+    private IEnumerator BGAnimationRoutine()
+    {
+        WaitForSeconds spawnInterval = new WaitForSeconds(0.1f);
+
+        while (socketManager != null && socketManager.isConnected)
+        {
+            SpawnShineParticle();
+            yield return spawnInterval;
+        }
+    }
+
+    private void SpawnShineParticle()
+    {
+        if (shinePrefab == null || parentRect == null) return;
+
+        float x = Random.Range(-960f, 960f);
+        float y = Random.Range(-540f, 540f);
+
+        GameObject shine = Instantiate(shinePrefab, parentRect);
+        shine.transform.localPosition = new Vector2(x, y);
+        shine.transform.localScale = Vector3.zero;
+
+        if (shine.TryGetComponent(out CanvasGroup cg))
+        {
+            cg.alpha = 0f;
+
+            Sequence shineSeq = DOTween.Sequence();
+
+            // Fade In & Scale Up
+            shineSeq.Append(shine.transform.DOScale(1f, 1f).SetEase(Ease.Linear));
+            shineSeq.Join(cg.DOFade(1f, 1f).SetEase(Ease.Linear));
+
+            // Fade Out & Scale Down
+            shineSeq.Append(shine.transform.DOScale(0f,1f).SetEase(Ease.Linear));
+            shineSeq.Join(cg.DOFade(0f, 1f).SetEase(Ease.Linear));
+
+            // Cleanup safely
+            shineSeq.OnComplete(() =>
+            {
+                Destroy(shine);
+            });
+        }
+        else
+        {
+            Destroy(shine);
         }
     }
 
@@ -529,7 +627,6 @@ public class UIManager : MonoBehaviour
                 sb.Append("<sprite index=11>");
             else if (c == '+')
                 sb.Append("<sprite index=12>");
-            // skip any other characters (e.g. '-', letters)
         }
         return sb.ToString();
     }

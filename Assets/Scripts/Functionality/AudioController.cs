@@ -13,17 +13,16 @@ internal class AudioController : MonoBehaviour
     [SerializeField] private AudioClip bonusbgMusic;
 
     [Header("Game Sounds")]
-    [SerializeField] private AudioClip anotherWin;
+    [SerializeField] private AudioClip WheelArrowTick;
+    [SerializeField] private AudioClip WheelBlackOverlay;
+    [SerializeField] private AudioClip BigWin;
+    [SerializeField] private AudioClip WheelArrowStop;
+    [SerializeField] private AudioClip uiButton;
     [SerializeField] private AudioClip normalWin;
-    [SerializeField] private AudioClip betButton;
-    [SerializeField] private AudioClip WolfAppear;
-    [SerializeField] private AudioClip BonusWin;
-    [SerializeField] private AudioClip BoostWin;
-    [SerializeField] private AudioClip MoonIconPop;
-    [SerializeField] private AudioClip LightSound;
-    [SerializeField] private AudioClip SpinStarts;
+    [SerializeField] private AudioClip bonusComplete;
     [SerializeField] private AudioClip ReelHit;
-    //[SerializeField] private AudioClip SpinStops;
+    [SerializeField] private AudioClip reelSpinning;
+    [SerializeField] private AudioClip bonusHit;
 
     // [Header("UI Sounds")]
     // [SerializeField] private AudioClip uiButton;
@@ -125,48 +124,47 @@ internal class AudioController : MonoBehaviour
         bgMusicSource.Stop();
     }
 
-    internal void PlayAnotherWin()
+    internal void PlayWheelArrowTick(bool loop)
     {
-        PlayGame(anotherWin, false);
+        PlayGame(WheelArrowTick, loop);
     }
 
-    internal void PlayNormalWin()
+    internal void PlayWheelBlackOverlay(bool loop)
     {
-        PlayGame(normalWin, false);
+        PlayGame(WheelBlackOverlay, loop);
     }
 
-    internal void PlayBetButton()
+    internal void PlayBigWin(bool loop)
     {
-        PlayGame(betButton, false);
+        PlayGame(BigWin, loop);
     }
-    internal void PlayWolfAppear()
+    internal void PlayWheelArrowStop(bool loop)
     {
-        PlayGame(WolfAppear, false);
+        PlayGame(WheelArrowStop, loop);
     }
-
-    internal void PlaySpinStarts()
+    internal void PlayUIButton(bool loop)
     {
-        PlayGame(SpinStarts, false);
+        PlayGame(uiButton, loop);
     }
-    internal void PlayReelHit()
+    internal void PlayNormalWin(bool loop)
     {
-        PlayGame(ReelHit, false);
+        PlayGame(normalWin, loop);
     }
-    internal void PlayLightSound()
+    internal void PlayBonusComplete(bool loop)
     {
-        PlayGame(LightSound, false);
+        PlayGame(bonusComplete, loop);
     }
-    internal void PlayBonusWin()
+    internal void PlayReelHit(bool loop)
     {
-        PlayGame(BonusWin, false);
+        PlayGame(ReelHit, loop);
     }
-    internal void PlayBoostWin()
+    internal void PlayReelSpinning(bool loop)
     {
-        PlayGame(BoostWin, false);
+        PlayGame(reelSpinning, loop);
     }
-    internal void PlayMoonIconPop()
+    internal void PlayBonusHit(bool loop)
     {
-        PlayGame(MoonIconPop, false);
+        PlayGame(bonusHit, loop);
     }
 
     private void PlayGame(AudioClip clip, bool loop)

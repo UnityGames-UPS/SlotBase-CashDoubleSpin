@@ -1,7 +1,6 @@
 ﻿<Solution>
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="com.Tivadar.Best.HTTP.csproj" />
-  <Project Path="spine-unity-examples.csproj" />
   <Project Path="spine-unity-editor.csproj" />
   <Project Path="spine-csharp.csproj" />
   <Project Path="spine-unity.csproj" />
@@ -9,6 +8,5 @@
   <Project Path="com.Tivadar.Best.SocketIO.csproj" />
   <Project Path="Assembly-CSharp-firstpass.csproj" />
   <Project Path="com.Tivadar.Best.WebSockets.csproj" />
-  <Project Path="spine-unity-examples-editor.csproj" />
   <Project Path="com.Tivadar.Best.HTTP.Profiler.Editor.csproj" />
 </Solution>

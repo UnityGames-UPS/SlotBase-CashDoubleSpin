@@ -12,7 +12,7 @@ public class ImageAnimation : MonoBehaviour
 		FINISHED
 	}
 	[SerializeField] internal List<Sprite> textureArray;
-	[SerializeField] private Image rendererDelegate;
+	[SerializeField] internal Image rendererDelegate;
 	[SerializeField] private bool useSharedMaterial = true;
 	[SerializeField] internal bool doLoopAnimation = true;
 	[SerializeField] private bool StartOnAwake;

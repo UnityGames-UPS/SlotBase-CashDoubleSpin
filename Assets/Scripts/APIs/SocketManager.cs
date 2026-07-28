@@ -39,7 +39,7 @@ public class SocketIOManager : MonoBehaviour
   internal List<List<int>> LineData = null; //
 
   [Header("Ping Pong")]
-  private bool isConnected = false; //Back2 Start.       //
+  internal bool isConnected = false; //Back2 Start.       //
   private bool hasEverConnected = false;          //
   private const int MaxReconnectAttempts = 5;     //
   private const float ReconnectDelaySeconds = 2f;     //

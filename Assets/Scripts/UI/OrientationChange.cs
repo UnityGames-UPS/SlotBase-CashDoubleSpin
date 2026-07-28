@@ -7,9 +7,7 @@ public class OrientationChange : MonoBehaviour
 {
   [SerializeField] private RectTransform UIWrapper;
   [SerializeField] private CanvasScaler CanvasScaler;
-  [SerializeField] private float MatchWidth = 0f;
-  [SerializeField] private float MatchHeight = 1f;
-  [SerializeField] private float PortraitMatchHeight = 1f;
+
   [SerializeField] private float transitionDuration = 0.2f;
   [SerializeField] private float waitForRotation = 0.2f;
 
@@ -17,72 +15,110 @@ public class OrientationChange : MonoBehaviour
   private Tween matchTween;
   private Tween rotationTween;
   private Coroutine rotationRoutine;
-  private bool isLandscape;
+  internal bool isLandscape;
+  private bool hasAppliedInitialMatch = false; // FIX: tracks whether the very first ApplyMatch has run
+
+  // FIX: expose current orientation state so SwipeHandler can adapt its swipe detection axis
+  public static bool IsLandscapeOrientation { get; private set; } = true;
+
+  // FIX: exposes whether UIWrapper's rotation/CanvasScaler match is mid-tween, so systems that
+  // read world-space transform positions (e.g. WheelSpinController) can wait for it to settle
+  // instead of capturing a mid-transition value.
+  public static bool IsTransitioning { get; private set; } = false;
+
   private void Awake()
   {
     ReferenceAspect = CanvasScaler.referenceResolution;
   }
 
-  void SwitchDisplay(string dimensions)
+  private void Start()
+  {
+    ApplyMatch(Screen.width, Screen.height);
+  }
+
+  private void SwitchDisplay(string dimensions)
   {
     if (rotationRoutine != null) StopCoroutine(rotationRoutine);
     rotationRoutine = StartCoroutine(RotationCoroutine(dimensions));
   }
 
-  IEnumerator RotationCoroutine(string dimensions)
+  private IEnumerator RotationCoroutine(string dimensions)
   {
     yield return new WaitForSecondsRealtime(waitForRotation);
     string[] parts = dimensions.Split(',');
     if (parts.Length == 2 && int.TryParse(parts[0], out int width) && int.TryParse(parts[1], out int height) && width > 0 && height > 0)
     {
-      Debug.LogWarning($"Unity: Received Dimensions - Width: {width}, Height: {height}");
-
-      isLandscape = width > height;
-
-      Quaternion targetRotation = isLandscape ? Quaternion.identity : Quaternion.Euler(0, 0, -90);
-      if (rotationTween != null && rotationTween.IsActive()) rotationTween.Kill();
-      rotationTween = UIWrapper.DOLocalRotateQuaternion(targetRotation, transitionDuration).SetEase(Ease.OutCubic);
-
-      float currentAspectRatio = isLandscape ? (float)width / height : (float)height / width;
-      float referenceAspectRatio = ReferenceAspect.x / ReferenceAspect.y;
-      Debug.LogWarning("currentAspect Ratio: " + currentAspectRatio);
-      float targetMatch;
-
-      if (isLandscape)
-      {
-        targetMatch = currentAspectRatio > referenceAspectRatio ? MatchHeight : MatchWidth;
-      }
-      else
-      {
-        if (currentAspectRatio >= 1.3f && currentAspectRatio < 1.4f)
-          targetMatch = 0.33f;   // ~1.3
-        else if (currentAspectRatio >= 1.4f && currentAspectRatio < 1.5f)
-          targetMatch = 0.32f;   // ~1.4
-        else if (currentAspectRatio >= 1.5f && currentAspectRatio < 1.6f)
-          targetMatch = 0.34f;   // ~1.5
-        else if (currentAspectRatio >= 1.6f && currentAspectRatio < 1.85f)
-          targetMatch = 0.5f;    // ~2.0 range
-        else if (currentAspectRatio >= 1.85 && currentAspectRatio < 2)
-          targetMatch = 0.5f;
-        else if (currentAspectRatio >= 2 && currentAspectRatio < 2.4)
-          targetMatch = 0.42f;
-        else if(currentAspectRatio >= 2.4 && currentAspectRatio < 2.6)
-          targetMatch = 0.38f;
-        else if(currentAspectRatio >= 2.6 && currentAspectRatio < 2.7)
-          targetMatch = 0.45f;
-        else
-          targetMatch = PortraitMatchHeight;
-      }
-
-      if (matchTween != null && matchTween.IsActive()) matchTween.Kill();
-      matchTween = DOTween.To(() => CanvasScaler.matchWidthOrHeight, x => CanvasScaler.matchWidthOrHeight = x, targetMatch, transitionDuration).SetEase(Ease.InOutQuad);
-
-      Debug.LogWarning($"matchWidthOrHeight set to: {targetMatch}");
+      ApplyMatch(width, height);
     }
     else
     {
       Debug.LogWarning("Unity: Invalid format received in SwitchDisplay");
     }
+  }
+
+  private void ApplyMatch(int width, int height)
+  {
+    isLandscape = width > height;
+    IsLandscapeOrientation = isLandscape; // FIX: update static state for swipe handlers
+
+    Quaternion targetRotation = isLandscape ? Quaternion.identity : Quaternion.Euler(0, 0, -90);
+    if (rotationTween != null && rotationTween.IsActive()) rotationTween.Kill();
+
+    float refW = ReferenceAspect.x;
+    float refH = ReferenceAspect.y;
+
+    float widthScale = (float)width / refW;
+    float heightScale = (float)height / refH;
+
+    float targetScale;
+    if (isLandscape)
+    {
+      targetScale = Mathf.Min(widthScale, heightScale);
+    }
+    else
+    {
+      
+      
+      float portraitWidthScale = (float)height / refW;
+      float portraitHeightScale = (float)width / refH;
+      targetScale = Mathf.Min(portraitWidthScale, portraitHeightScale);
+    }
+
+    float targetMatch;
+    if (Mathf.Abs(heightScale - widthScale) < 0.0001f)
+    {
+      targetMatch = 0.5f;
+    }
+    else
+    {
+      float logRatio = Mathf.Log(heightScale / widthScale);
+      targetMatch = Mathf.Log(targetScale / widthScale) / logRatio;
+      targetMatch = Mathf.Clamp01(targetMatch);
+    }
+
+    if (matchTween != null && matchTween.IsActive()) matchTween.Kill();
+
+    // FIX: the very first orientation application (game launch) has no visible "before" state
+    // for the player to see transition from, so apply it instantly. This avoids a window where
+    // world-space positions under UIWrapper are mid-rotation/mid-scale when something else
+    // (like WheelSpinController) reads them right after the game becomes interactive.
+    if (!hasAppliedInitialMatch)
+    {
+      hasAppliedInitialMatch = true;
+      UIWrapper.localRotation = targetRotation;
+      CanvasScaler.matchWidthOrHeight = targetMatch;
+      IsTransitioning = false;
+    }
+    else
+    {
+      IsTransitioning = true;
+      rotationTween = UIWrapper.DOLocalRotateQuaternion(targetRotation, transitionDuration).SetEase(Ease.OutCubic);
+      matchTween = DOTween.To(() => CanvasScaler.matchWidthOrHeight, x => CanvasScaler.matchWidthOrHeight = x, targetMatch, transitionDuration)
+        .SetEase(Ease.InOutQuad)
+        .OnComplete(() => IsTransitioning = false); // FIX: clear flag once settled
+    }
+
+    Debug.LogWarning($"Unity: Dimensions {width}x{height}, isLandscape: {isLandscape}, targetMatch calculated: {targetMatch}");
   }
 
 #if UNITY_EDITOR

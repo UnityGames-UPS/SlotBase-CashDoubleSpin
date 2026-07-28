@@ -69,7 +69,7 @@ public class Symbol
 {
     public int id { get; set; }
     public string name { get; set; }
-    public int payout { get; set; }
+    public double payout { get; set; }
     public string description { get; set; }
     public string group { get; set; }
 }
@@ -85,8 +85,8 @@ public class Features
 [Serializable]
 public class AnyPayouts
 {
-    public int bars { get; set; }
-    public int sevens { get; set; }
+    public double bars { get; set; }
+    public double sevens { get; set; }
     public List<int> blockSymbols { get; set; }
     public bool requireAllPositionsMatch { get; set; }
 }
@@ -103,8 +103,10 @@ public class CashSpinnerBonus
 
     //Result
     public bool triggered { get; set; }
-    public double awardValue { get; set; }
+    public double award { get; set; }
     public int wheelStopIndex { get; set; }
+    public bool levelUp { get; set; }
+    public List<List<int>> positions { get; set; }
 }
 
 [Serializable]
@@ -118,7 +120,9 @@ public class DoubleCashSpinnerBonus
 
     //Result
     public bool triggered { get; set; }
-    public int awardValue { get; set; }
+    public double award { get; set; }
+    public int wheelStopIndex { get; set; }
+    public List<List<int>> positions { get; set; }
 }
 
 [Serializable]
