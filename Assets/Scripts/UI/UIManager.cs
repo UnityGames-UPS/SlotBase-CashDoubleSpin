@@ -422,9 +422,14 @@ public class UIManager : MonoBehaviour
     private void ClosePopup(GameObject Popup)
     {
         audioController.PlayUIButton(false);
-        if (Popup) Popup.SetActive(false);
         if (!DisconnectPopup_Object.activeSelf)
-            if (MainPopup_Object) MainPopup_Object.SetActive(false);
+        {
+            if ((Popup == PaytablePopup_Object && PaytablePopup_Object.activeSelf) || (Popup == QuitPopup_Object && QuitPopup_Object.activeSelf) || (Popup == LBPopup_Object && LBPopup_Object.activeSelf))
+            {
+                if (MainPopup_Object) MainPopup_Object.SetActive(false);
+            }
+        }
+        if (Popup) Popup.SetActive(false);
     }
 
     internal void CheckAndClosePopups()
@@ -595,7 +600,7 @@ public class UIManager : MonoBehaviour
             shineSeq.Join(cg.DOFade(1f, 1f).SetEase(Ease.Linear));
 
             // Fade Out & Scale Down
-            shineSeq.Append(shine.transform.DOScale(0f,1f).SetEase(Ease.Linear));
+            shineSeq.Append(shine.transform.DOScale(0f, 1f).SetEase(Ease.Linear));
             shineSeq.Join(cg.DOFade(0f, 1f).SetEase(Ease.Linear));
 
             // Cleanup safely
