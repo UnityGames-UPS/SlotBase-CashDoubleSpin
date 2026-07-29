@@ -59,6 +59,7 @@ public class SlotManager : MonoBehaviour
     private List<Tween> _alltweens = new List<Tween>();
     private Coroutine _autoSpinRoutine = null;
     private Coroutine _tweenRoutine;
+    private Coroutine _winLinesLoopRoutine;
     private bool _isSpinning = false;
     internal int _numberOfSlots = 3;
     private bool _stopSpinToggle;
@@ -228,6 +229,8 @@ public class SlotManager : MonoBehaviour
     private IEnumerator TweenRoutine()
     {
         _isSpinning = true;
+
+        StopWinLinesLoop();
 
         if (uiManager.currentBalance < uiManager.currentTotalBet)
         {
@@ -496,38 +499,120 @@ public class SlotManager : MonoBehaviour
         }
         yield return new WaitForSeconds(0.5f);
 
-        for (int i = 0; i < winLines.Count; i++)
+        if (_isAutoSpin)
         {
-            Color32 c = payLines[winLines[i].lineIndex].color;
-            c.a = 255; // Fully visible on a 0-255 scale
-            payLines[winLines[i].lineIndex].color = c;
-            foreach (var line in winLines[i].positions)
+            // Autospin: show every winning line once, then let the next spin proceed.
+            yield return LoopWinLines(winLines, oneShot: true);
+        }
+        else
+        {
+            // Manual spin: keep cycling the winning lines until the player starts the next spin.
+            _winLinesLoopRoutine = StartCoroutine(LoopWinLines(winLines, oneShot: false));
+        }
+        // for (int i = 0; i < winLines.Count; i++)
+        // {
+        //     Color32 c = payLines[winLines[i].lineIndex].color;
+        //     c.a = 255; // Fully visible on a 0-255 scale
+        //     payLines[winLines[i].lineIndex].color = c;
+        //     foreach (var line in winLines[i].positions)
+        //     {
+        //         int col = line[0];
+        //         int row = line[1];
+        //         int.TryParse(socketManager.resultData.payload.reels[col][row], out int symbolID);
+        //         ImageAnimation anim = _resultImages[row].slotImages[col].GetComponent<ImageAnimation>();
+        //         anim.textureArray = GetAnimationSprite(symbolID);
+        //         if (symbolID == 1)
+        //         {
+        //             anim.AnimationSpeed = 15f;
+        //         }
+        //         else
+        //         {
+        //             anim.AnimationSpeed = 37f;
+        //         }
+        //         anim.doLoopAnimation = false;
+        //         anim.StartAnimation();
+        //     }
+        //     int tempIndex = GetPerLineWinIndex(winLines[i].lineIndex);
+        //     lineWinObjects[tempIndex].transform.localScale = new Vector3(0f, 0f, 0f);
+        //     lineWinTexts[tempIndex].text = winLines[i].payout.ToString("F2");
+        //     lineWinObjects[tempIndex].DOFade(1f, 1f).SetEase(Ease.Linear);
+        //     lineWinObjects[tempIndex].transform.DOScale(1f, 0.7f).SetEase(Ease.Linear);
+        //     yield return new WaitForSeconds(1.5f);
+        //     c.a = 150;
+        //     payLines[winLines[i].lineIndex].color = c;
+        //     lineWinObjects[tempIndex].DOFade(0f, 0.7f).SetEase(Ease.Linear);
+        // }
+    }
+
+    private IEnumerator LoopWinLines(List<WinningLine> winLines, bool oneShot)
+    {
+        // oneShot = true (autospin): runs through the winning lines exactly once, then returns
+        //           so autospin can proceed to the next spin.
+        // oneShot = false (manual spin): cycles forever. StopWinLinesLoop() (called from
+        //           TweenRoutine the moment a new spin starts) is what actually ends this.
+        do
+        {
+            for (int i = 0; i < winLines.Count; i++)
             {
-                int col = line[0];
-                int row = line[1];
-                int.TryParse(socketManager.resultData.payload.reels[col][row], out int symbolID);
-                ImageAnimation anim = _resultImages[row].slotImages[col].GetComponent<ImageAnimation>();
-                anim.textureArray = GetAnimationSprite(symbolID);
-                if (symbolID == 1)
+                Color32 c = payLines[winLines[i].lineIndex].color;
+                c.a = 255; // Fully visible on a 0-255 scale
+                payLines[winLines[i].lineIndex].color = c;
+                foreach (var line in winLines[i].positions)
                 {
-                    anim.AnimationSpeed = 15f;
+                    int col = line[0];
+                    int row = line[1];
+                    int.TryParse(socketManager.resultData.payload.reels[col][row], out int symbolID);
+                    ImageAnimation anim = _resultImages[row].slotImages[col].GetComponent<ImageAnimation>();
+                    anim.textureArray = GetAnimationSprite(symbolID);
+                    if (symbolID == 1)
+                    {
+                        anim.AnimationSpeed = 15f;
+                    }
+                    else
+                    {
+                        anim.AnimationSpeed = 37f;
+                    }
+                    anim.doLoopAnimation = false;
+                    anim.StartAnimation();
                 }
-                else
-                {
-                    anim.AnimationSpeed = 37f;
-                }
-                anim.doLoopAnimation = false;
-                anim.StartAnimation();
+                int tempIndex = GetPerLineWinIndex(winLines[i].lineIndex);
+                lineWinObjects[tempIndex].transform.localScale = new Vector3(0f, 0f, 0f);
+                lineWinTexts[tempIndex].text = winLines[i].payout.ToString("F2");
+                lineWinObjects[tempIndex].DOFade(1f, 1f).SetEase(Ease.Linear);
+                lineWinObjects[tempIndex].transform.DOScale(1f, 0.7f).SetEase(Ease.Linear);
+                yield return new WaitForSeconds(1.5f);
+                c.a = 150;
+                payLines[winLines[i].lineIndex].color = c;
+                lineWinObjects[tempIndex].DOFade(0f, 0.7f).SetEase(Ease.Linear);
             }
-            int tempIndex = GetPerLineWinIndex(winLines[i].lineIndex);
-            lineWinObjects[tempIndex].transform.localScale = new Vector3(0f, 0f, 0f);
-            lineWinTexts[tempIndex].text = winLines[i].payout.ToString("F2");
-            lineWinObjects[tempIndex].DOFade(1f, 1f).SetEase(Ease.Linear);
-            lineWinObjects[tempIndex].transform.DOScale(1f, 0.7f).SetEase(Ease.Linear);
-            yield return new WaitForSeconds(1.5f);
+        } while (!oneShot);
+    }
+
+    /// <summary>
+    /// Stops the repeating win-lines display (if running) and snaps its visuals
+    /// back to idle so nothing is left mid-fade or mid-scale when the next spin starts.
+    /// </summary>
+    private void StopWinLinesLoop()
+    {
+        if (_winLinesLoopRoutine == null) return;
+
+        StopCoroutine(_winLinesLoopRoutine);
+        _winLinesLoopRoutine = null;
+
+        foreach (var payLine in payLines)
+        {
+            payLine.DOKill();
+            Color32 c = payLine.color;
             c.a = 150;
-            payLines[winLines[i].lineIndex].color = c;
-            lineWinObjects[tempIndex].DOFade(0f, 0.7f).SetEase(Ease.Linear);
+            payLine.color = c;
+        }
+
+        foreach (var lineWinObject in lineWinObjects)
+        {
+            lineWinObject.DOKill();
+            lineWinObject.transform.DOKill();
+            lineWinObject.alpha = 0f;
+            lineWinObject.transform.localScale = Vector3.zero;
         }
     }
 
