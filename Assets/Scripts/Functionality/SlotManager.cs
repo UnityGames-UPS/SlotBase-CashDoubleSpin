@@ -857,6 +857,7 @@ public class SlotManager : MonoBehaviour
             foreach (var image in slotimage.slotImages)
             {
                 image.transform.localScale = Vector2.one;
+                image.GetComponent<ImageAnimation>().StopAnimation();
             }
         }
         foreach (var obj in redSlotBgs)
