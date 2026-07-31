@@ -88,6 +88,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private SocketIOManager socketManager;
     [SerializeField] private SlotManager slotManager;
     [SerializeField] private BonusManager bonusManager;
+    [SerializeField] private JSFunctCalls jsFunctCalls;
 
     internal double currentBalance = 0;
     internal double currentTotalBet = 0;
@@ -98,6 +99,20 @@ public class UIManager : MonoBehaviour
 
     private int paytablePageCounter;
     private Coroutine bgAnimationRoutine;
+
+    private void Awake()
+    {
+        if (jsFunctCalls != null)
+            jsFunctCalls.RegisterVisibilityListener(gameObject.name);
+    }
+
+    public void OnFocusChanged(string value)
+    {
+        bool focused = value == "1";
+        Debug.Log("UNITY FOCUS CHANGED: " + value + " (focused: " + focused + ")");
+        if (audioController != null) audioController.SetMuteAll(!focused);
+        if (socketManager != null) socketManager.HandleFocusChange(focused);
+    }
 
     private void Start()
     {
@@ -381,6 +396,14 @@ public class UIManager : MonoBehaviour
         {
             if (Balance_Text) Balance_Text.text = balance.ToString("F2");
         }
+    }
+
+    internal void UpdateBalanceDisplay(double newBalance)
+    {
+        currentBalance = newBalance;
+        UpdateBalance(newBalance);
+        if (currentBalance < currentTotalBet)
+            LowBalPopup();
     }
 
     internal void UpdateWin(double winAmount, bool doAnimate = false)

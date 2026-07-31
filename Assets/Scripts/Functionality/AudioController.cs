@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
@@ -35,6 +36,9 @@ internal class AudioController : MonoBehaviour
 
     private bool isGameMuted = false;
     private bool isMusicMuted = false;
+
+    private readonly Dictionary<AudioSource, bool> preFocusMuteState = new Dictionary<AudioSource, bool>();
+    private bool isForceMuted = false;
 
     private void Start()
     {
@@ -188,21 +192,44 @@ internal class AudioController : MonoBehaviour
     //     gameSoundSource.PlayOneShot(uiButton);
     // }
 
-    internal void MuteAll(bool mute)
+    // Focus-driven — called from BOTH UIManager.OnFocusChanged (JS path) and OnApplicationFocus below.
+    internal void SetMuteAll(bool forceMute)
     {
-        bgMusicSource.mute = mute;
-        gameSoundSource.mute = mute;
-        // uiSource.mute = mute;
+        if (forceMute == isForceMuted) return;
+        isForceMuted = forceMute;
+
+        AudioSource[] sources = { bgMusicSource, gameSoundSource };
+        foreach (var source in sources)
+        {
+            if (source == null) continue;
+            if (forceMute)
+            {
+                preFocusMuteState[source] = source.mute;
+                source.mute = true;
+            }
+            else
+            {
+                source.mute = preFocusMuteState.TryGetValue(source, out bool prevMuted) ? prevMuted : source.mute;
+            }
+        }
     }
 
+    internal void MuteBackground(bool mute)
+    {
+        bgMusicSource.mute = mute;
+        if (isForceMuted) preFocusMuteState[bgMusicSource] = mute;
+    }
 
-    internal void MuteBackground(bool mute) => bgMusicSource.mute = mute;
-    internal void MuteGame(bool mute) => gameSoundSource.mute = mute;
+    internal void MuteGame(bool mute)
+    {
+        gameSoundSource.mute = mute;
+        if (isForceMuted) preFocusMuteState[gameSoundSource] = mute;
+    }
     // internal void MuteUI(bool mute) => uiSource.mute = mute;
 
     private void OnApplicationFocus(bool hasFocus)
     {
-        AudioListener.volume = hasFocus ? 1.0f : 0.0f;
+        SetMuteAll(!hasFocus);
     }
 
     private void OnApplicationPause(bool pauseStatus)

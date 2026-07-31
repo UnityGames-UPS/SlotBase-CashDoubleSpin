@@ -27942,6 +27942,7 @@ MonoBehaviour:
   socketManager: {fileID: 923888316}
   slotManager: {fileID: 968524478}
   bonusManager: {fileID: 805827569}
+  jsFunctCalls: {fileID: 1148238420}
 --- !u!4 &1835229978
 Transform:
   m_ObjectHideFlags: 0
@@ -32938,7 +32939,7 @@ MonoBehaviour:
   normalWin: {fileID: 8300000, guid: 25a4861f58c384c7fb035fe313c3ac32, type: 3}
   bonusComplete: {fileID: 8300000, guid: c4cc5d0546f6840d183be0f4c3b7b162, type: 3}
   ReelHit: {fileID: 8300000, guid: 09c0df3526a21494c865444f820162e9, type: 3}
-  reelSpinning: {fileID: 8300000, guid: 17d3aa43c37a440dda5d63a5a9d40263, type: 3}
+  reelSpinning: {fileID: 8300000, guid: 1fd0ce7c8857e4efe83d360451cdfe2c, type: 3}
   bonusHit: {fileID: 8300000, guid: f9ae490b05a64465da5b0816e939b92d, type: 3}
 --- !u!82 &1099861978960025974
 AudioSource:
